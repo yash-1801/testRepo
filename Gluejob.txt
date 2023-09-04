@@ -1,0 +1,48 @@
+import sys
+from awsglue.transforms import *
+from awsglue.utils import getResolvedOptions
+from pyspark.context import SparkContext
+from awsglue.context import GlueContext
+from awsglue.job import Job
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import *
+
+## @params: [JOB_NAME]
+args = getResolvedOptions(sys.argv, ['JOB_NAME'])
+
+
+
+sc = SparkContext()
+glueContext = GlueContext(sc)
+spark = glueContext.spark_session
+job = Job(glueContext)
+job.init(args['JOB_NAME'], args)
+
+df=spark.read.parquet("s3://dbda-grp5-project/Final_Transform_new/Redshift/part-00000-8086bc2d-f453-4c53-9506-1620452f58db-c000.snappy.parquet",header=True)
+
+redshift_url='jdbc:redshift://project.cgyht0iwgwtq.us-east-1.redshift.amazonaws.com:5439/dev'
+redshift_user='admin'
+redshift_password='Kayzala123#'
+
+redshift_properties={
+    "user":redshift_user,
+    "password":redshift_password
+    
+}
+
+
+df.write \
+    .format("io.github.spark_redshift_community.spark.redshift") \
+    .option("url", redshift_url) \
+    .option("dbtable", "Group5") \
+    .option("tempdir", "s3://project0786/tempdirhm") \
+    .option("aws_iam_role", "arn:aws:iam::898087952767:role/LabRole") \
+    .option("user", redshift_user) \
+    .option("password", redshift_password) \
+    .mode("append") \
+    .save()
+    
+
+
+
+job.commit()
